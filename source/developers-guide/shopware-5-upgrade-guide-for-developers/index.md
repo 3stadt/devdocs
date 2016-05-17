@@ -40,33 +40,32 @@ For more in-depth information please see [developers-guide/csrf-protection/](htt
 
 ### Address management
 
-Prior to Shopware 5.2 each customer had two addresses assigned: A shipping and a billing address.   
- With Shopware 5.2 a customer is able to have a virtually unlimited number of addresses.
- These addresses can either be managed by the customer via his account page or in the Shopware backend.
 
-To reflect these changes the new database table `s_user_addresses` holds all user addresses. The current default billing
-and shipping address is indicated via the according flags `default_billing_address_id` and `default_shipping_address_id`
-in the the `s_user` table.
+The tables `s_user_shippingaddress` and `s_user_billingaddress` are no longer read by shopware core.
+They are overwritten with the current default shipping/billing address when set or changed for a customer.
 
-The old and now obsolete tables `s_user_shippingaddress` and `s_user_billingaddress` are still existing. However it is
-important to note: **The previous address tables are read only!** Though your plugin could in fact write data to these
-tables, the changes would be overwritten. As soon as a new default billing/shipping address is set for a user, the information
-is synched into the legacy tables. Changes in these legacy tables `s_user_shippingaddress` and `s_user_billingaddress` are
-not transfered into the new address management.
+The models `\Shopware\Models\Customer\Billing` and `\Shopware\Models\Customer\Shipping` have been deprecated.
+Their association in `\Shopware\Models\Customer\Customer` will be removed with Shopware version 5.3.
+As replacement, use the new model `\Shopware\Models\Customer\Address` which is associated with the customer
+using the `$defaultBillingAddress` and `$defaultShippingAddress` properties.
+In contrast to prior versions, the association is no longer managed by the customer.
+That implies you have to use the new `shopware_account.address_service` to manage the customer's addresses.
 
-With the new address management the registration process was rewritten. Plugins that are tampering with data throughout the
-registration process have to be adapted. Events and other entry points regarding the registration process in `\sAdmin` and
-`Shopware_Controllers_Frontend_Register` were removed. Please have a look at the services `shopware_account.address_service`,
-`shopware_account.customer_service` and `shopware_account.register_service` for further information.
+In addition, the customer number and birthday have been moved from `s_user_billingaddress` to `s_user` just like
+the properties in the respective models.
 
-When you are developing custom templates it is important to note that the billing and shipping templates were removed from the
-registration process.
+The customer now includes a title, salutation, firstname, lastname, customer number and birthday.
+These properties can be managed in the customer model.
 
-In addition to addresses from the database, a user can choose a non-default address during checkout which is saved in the session
-and directly written to the according order tables during the order process. Those intermediate addresses won't show up in the
-`s_user_addresses` table, so make sure to not rely exclusive on the database fields if your plugin affects the checkout process.
+The register controller has been completely rewritten from the ground up and makes use of the new `shopware_account.register_service`.
+Methods of core class `\sAdmin` regarding the registration have been removed. Hint: Check your events and hooks.
 
-The new address management is based on [Symfony Forms](http://symfony.com/doc/current/book/forms.html).
+A bunch of events and templates regarding registration, account and checkout have been completely rewritten or removed.
+For a complete list of changes, please refer to the `UPGRADE.md`.
+
+Forms in the account are now validated by Symfony Forms.
+The forms can be extended using the event `Shopware_Form_Builder` which provides the form reference and a builder instance.
+To learn how to extend these forms, please refer to the official [Symfony Forms](http://symfony.com/doc/current/book/forms.html) documentation.
 
 ### Attribute management
 
@@ -98,32 +97,26 @@ For further information on attribute management please refer to the `README.md` 
 
 ### Shopping worlds
 
-The shopping worlds, also known as emotion, got a complete overhaul. There are a few changes notable for plugin developers.
+The `masonry` mode is no longer available. It was replaced by `fluid` mode. The `masonry` jQuery plugin is no longer part of the shopware core.
 
-Up until now, shopping worlds had a so called _masonry_ mode, which was realised via a jQuery plugin. The mode now is replaced by a mode
-called _fluid_. Both modes aim to automatically create a pleasant user experience when viewing a shopping world on a smaller screen than intended by the shopping world author.
-Since the _masonry_ plugin is no longer needed, it was removed. This will affect your plugin if it made use of this now formerly
-included library.
+The fields of a shopping world as well as the corresponding SEO URL are now translatable.
 
-The fields of a shopping world as well as the corresponding SEO URL is now translatable.
+Landing pages no longer depended on categories, they are now bound to shops.
+Auto-generated banner images in a category linking to a connected shopping world are no longer generated.
 
-Landing pages depended on categories, with shopware 5.2 they are bound to shops. In the consequence banner images in a category linking to a connected shopping world are
-no longer present. Landing pages can be assigned to one or more shops.
+Landing pages can be assigned to one or more shops.
 
-If you are writing widgets for shopping worlds, their fields are now translatable. To make use of this ability, it is sufficient to set the `translatable` field in `s_library_component_field`
-to 1 for a given element.
+Custom widgets for shopping worlds are translatable if the `translatable` field is set in `s_library_component_field`.
 
-Additionally, every element in a shopping world has its own viewport settings which are saved in `s_emotion_element_viewports`.
-These settings include position and visibility for each viewport.
+Every element in a shopping world has its own viewport settings, saved in `s_emotion_element_viewports`.
 
-You can define a default config for each custom shopping world widget. This includes settings like maximal height or width or an icon to make your widget easier identifiable.
+A default config for each custom shopping world widget can be saved. This includes settings like maximal height or width or an icon.
 For further information on this topic have a look at `themes/Backend/ExtJs/backend/emotion/view/detail/elements/base.js`.
 
 To make overriding the widget configuration easy, there are new blocks in `widgets/emotion/index.tpl`:
 * `widgets/emotion/index/attributes`
 * `widgets/emotion/index/config`
 * `widgets/emotion/index/element/config`
-
 
 ### Library updates
 
